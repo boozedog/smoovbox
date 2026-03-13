@@ -1,10 +1,12 @@
 import type { Context } from "hono"
+import type { Logger } from "pino"
 import { queryClaude } from "../claude"
 import { resolveModel, getModelId } from "../models"
 import { parseAnthropicRequest } from "../formats/anthropic"
 import type { AnthropicRequest } from "../types"
 
 export async function handleAnthropicMessages(c: Context) {
+  const log: Logger = c.get("log")
   try {
     const body = (await c.req.json()) as AnthropicRequest
     const model = resolveModel(body.model || "sonnet")
@@ -12,11 +14,14 @@ export async function handleAnthropicMessages(c: Context) {
     const { prompt } = parseAnthropicRequest(body)
     const modelId = getModelId(model)
 
+    log.info({ model, modelId, stream, messageCount: body.messages?.length }, "anthropic request")
+
     if (!stream) {
-      return handleNonStreaming(c, prompt, model, modelId)
+      return handleNonStreaming(c, log, prompt, model, modelId)
     }
-    return handleStreaming(c, prompt, model, modelId)
+    return handleStreaming(c, log, prompt, model, modelId)
   } catch (error) {
+    log.error({ err: error }, "anthropic handler error")
     return c.json(
       {
         type: "error",
@@ -30,7 +35,7 @@ export async function handleAnthropicMessages(c: Context) {
   }
 }
 
-async function handleNonStreaming(c: Context, prompt: string, model: "opus" | "sonnet" | "haiku", modelId: string) {
+async function handleNonStreaming(c: Context, log: Logger, prompt: string, model: "opus" | "sonnet" | "haiku", modelId: string) {
   let fullContent = ""
   const response = queryClaude({ prompt, model, stream: false })
 
@@ -48,6 +53,8 @@ async function handleNonStreaming(c: Context, prompt: string, model: "opus" | "s
     fullContent = "I can help with that. Could you provide more details?"
   }
 
+  log.info({ responseLength: fullContent.length }, "anthropic non-streaming response complete")
+
   return c.json({
     id: `msg_${Date.now()}`,
     type: "message",
@@ -59,7 +66,7 @@ async function handleNonStreaming(c: Context, prompt: string, model: "opus" | "s
   })
 }
 
-async function handleStreaming(c: Context, prompt: string, model: "opus" | "sonnet" | "haiku", modelId: string) {
+async function handleStreaming(c: Context, log: Logger, prompt: string, model: "opus" | "sonnet" | "haiku", modelId: string) {
   const encoder = new TextEncoder()
 
   const readable = new ReadableStream({
@@ -115,8 +122,10 @@ async function handleStreaming(c: Context, prompt: string, model: "opus" | "sonn
           clearInterval(heartbeat)
         }
 
+        log.info("anthropic streaming response complete")
         controller.close()
       } catch (error) {
+        log.error({ err: error }, "anthropic streaming error")
         controller.enqueue(
           encoder.encode(
             `event: error\ndata: ${JSON.stringify({
