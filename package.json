@@ -21,6 +21,6 @@
   },
   "license": "MIT",
   "smoovwrapper": {
-    "passthrough": ["st", "git", "gh"]
+    "passthrough": ["st", "git", "gh", "fd", "rg"]
   }
 }
