@@ -1,0 +1,21 @@
+{
+  "name": "smoovwrapper",
+  "version": "1.0.0",
+  "description": "Local proxy server using Claude Max subscription to expose OpenAI-compatible and Anthropic-compatible API endpoints",
+  "type": "module",
+  "scripts": {
+    "start": "bun run bin/smoovwrapper.ts",
+    "dev": "bun --watch run bin/smoovwrapper.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.25",
+    "glob": "^13.0.0",
+    "hono": "^4.11.4"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.21",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.2"
+  },
+  "license": "MIT"
+}
