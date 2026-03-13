@@ -112,12 +112,15 @@ async function handleStreaming(
 
         try {
           for await (const message of response) {
-            log.debug({ messageType: message.type }, "sdk message")
             if (message.type === "stream_event") {
               const event = message.event
               const eventType = event.type
               const eventIndex = (event as any).index as number | undefined
-              log.debug({ eventType, eventIndex }, "stream event")
+
+              // Skip noisy per-token deltas at debug level
+              if (eventType !== "content_block_delta") {
+                log.debug({ eventType, eventIndex }, "stream event")
+              }
 
               // Filter out tool_use content blocks
               if (eventType === "content_block_start") {
@@ -158,6 +161,8 @@ async function handleStreaming(
                   isFirst = false
                 }
               }
+            } else {
+              log.debug({ messageType: message.type }, "sdk message")
             }
           }
         } finally {
