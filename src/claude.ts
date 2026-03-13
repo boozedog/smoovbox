@@ -15,12 +15,7 @@ const BLOCKED_BUILTIN_TOOLS = [
 const MCP_SERVER_NAME = "smoov"
 
 const ALLOWED_MCP_TOOLS = [
-  `mcp__${MCP_SERVER_NAME}__read`,
-  `mcp__${MCP_SERVER_NAME}__write`,
-  `mcp__${MCP_SERVER_NAME}__edit`,
   `mcp__${MCP_SERVER_NAME}__bash`,
-  `mcp__${MCP_SERVER_NAME}__glob`,
-  `mcp__${MCP_SERVER_NAME}__grep`,
 ]
 
 function resolveClaudeExecutable(): string {
