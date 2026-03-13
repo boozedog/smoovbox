@@ -108,7 +108,7 @@ async function handleStreaming(
 
         let isFirst = true
         let lastText = ""
-        const skipBlockIndices = new Set<number>()
+        let skipBlockIndices = new Set<number>()
 
         try {
           for await (const message of response) {
@@ -120,6 +120,12 @@ async function handleStreaming(
               // Skip noisy per-token deltas at debug level
               if (eventType !== "content_block_delta") {
                 log.debug({ eventType, eventIndex }, "stream event")
+              }
+
+              // New turn: reset per-turn block tracking
+              if (eventType === "message_start") {
+                skipBlockIndices = new Set<number>()
+                continue
               }
 
               // Filter out tool_use content blocks
