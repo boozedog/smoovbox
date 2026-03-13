@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "bun run bin/smoovwrapper.ts",
-    "dev": "bun --watch run bin/smoovwrapper.ts"
+    "dev": "LOG_LEVEL=debug bun --watch run bin/smoovwrapper.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.25",
