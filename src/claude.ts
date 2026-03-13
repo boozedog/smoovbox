@@ -3,7 +3,7 @@ import { execSync } from "child_process"
 import { existsSync } from "fs"
 import { fileURLToPath } from "url"
 import { join, dirname } from "path"
-import { smoovMcpServer } from "./mcp-tools"
+import { createSmoovMcpServer } from "./mcp-tools"
 import type { ClaudeModel } from "./types"
 
 const BLOCKED_BUILTIN_TOOLS = [
@@ -54,7 +54,7 @@ export function queryClaude(opts: QueryClaudeOptions) {
       disallowedTools: [...BLOCKED_BUILTIN_TOOLS],
       allowedTools: [...ALLOWED_MCP_TOOLS],
       mcpServers: {
-        [MCP_SERVER_NAME]: smoovMcpServer,
+        [MCP_SERVER_NAME]: createSmoovMcpServer(),
       },
     },
   })

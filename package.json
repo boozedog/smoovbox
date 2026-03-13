@@ -19,5 +19,8 @@
     "@types/node": "^22.0.0",
     "typescript": "^5.8.2"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "smoovwrapper": {
+    "passthrough": ["st", "git", "gh"]
+  }
 }
