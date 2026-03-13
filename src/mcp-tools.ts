@@ -61,7 +61,7 @@ export function createSmoovMcpServer() {
             })
             const output = result.stdout || result.stderr || "(no output)"
             if (result.exitCode !== 0) {
-              log.warn({ command: args.command, exitCode: result.exitCode, stderrLength: result.stderr.length }, "command failed")
+              log.warn({ command: args.command, exitCode: result.exitCode, stderr: result.stderr }, "command failed")
               return {
                 content: [{ type: "text", text: `${output}\n(exit code: ${result.exitCode})` }],
                 isError: true,

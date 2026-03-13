@@ -56,6 +56,8 @@ async function handleNonStreaming(
           fullContent += block.text
         }
       }
+    } else {
+      log.debug({ messageType: message.type, message }, "sdk message")
     }
   }
 
@@ -110,10 +112,12 @@ async function handleStreaming(
 
         try {
           for await (const message of response) {
+            log.debug({ messageType: message.type }, "sdk message")
             if (message.type === "stream_event") {
               const event = message.event
               const eventType = event.type
               const eventIndex = (event as any).index as number | undefined
+              log.debug({ eventType, eventIndex }, "stream event")
 
               // Filter out tool_use content blocks
               if (eventType === "content_block_start") {

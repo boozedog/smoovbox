@@ -4,7 +4,10 @@ import { existsSync } from "fs"
 import { fileURLToPath } from "url"
 import { join, dirname } from "path"
 import { createSmoovMcpServer } from "./mcp-tools"
+import { logger } from "./logger"
 import type { ClaudeModel } from "./types"
+
+const log = logger.child({ component: "claude" })
 
 const BLOCKED_BUILTIN_TOOLS = [
   "Read", "Write", "Edit", "MultiEdit",
@@ -44,6 +47,8 @@ export interface QueryClaudeOptions {
 }
 
 export function queryClaude(opts: QueryClaudeOptions) {
+  log.debug({ model: opts.model, stream: opts.stream, promptLength: opts.prompt.length }, "starting claude query")
+  log.trace({ prompt: opts.prompt }, "full prompt")
   return query({
     prompt: opts.prompt,
     options: {
