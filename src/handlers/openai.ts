@@ -1,10 +1,12 @@
 import type { Context } from "hono"
+import type { Logger } from "pino"
 import { queryClaude } from "../claude"
 import { resolveModel, getModelId } from "../models"
 import { parseOpenAIRequest } from "../formats/openai"
 import type { OpenAIChatRequest } from "../types"
 
 export async function handleOpenAIChatCompletions(c: Context) {
+  const log: Logger = c.get("log")
   try {
     const body = (await c.req.json()) as OpenAIChatRequest
     const model = resolveModel(body.model || "sonnet")
@@ -14,17 +16,21 @@ export async function handleOpenAIChatCompletions(c: Context) {
     const requestId = crypto.randomUUID().replace(/-/g, "").slice(0, 24)
 
     if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
+      log.warn("invalid request: messages empty or missing")
       return c.json(
         { error: { message: "messages is required and must be a non-empty array", type: "invalid_request_error", code: "invalid_messages" } },
         400
       )
     }
 
+    log.info({ model, modelId, stream, messageCount: body.messages.length }, "openai request")
+
     if (!stream) {
-      return handleNonStreaming(c, prompt, model, modelId, requestId)
+      return handleNonStreaming(c, log, prompt, model, modelId, requestId)
     }
-    return handleStreaming(c, prompt, model, modelId, requestId)
+    return handleStreaming(c, log, prompt, model, modelId, requestId)
   } catch (error) {
+    log.error({ err: error }, "openai handler error")
     return c.json(
       { error: { message: error instanceof Error ? error.message : "Unknown error", type: "server_error", code: null } },
       500
@@ -34,6 +40,7 @@ export async function handleOpenAIChatCompletions(c: Context) {
 
 async function handleNonStreaming(
   c: Context,
+  log: Logger,
   prompt: string,
   model: "opus" | "sonnet" | "haiku",
   modelId: string,
@@ -49,12 +56,16 @@ async function handleNonStreaming(
           fullContent += block.text
         }
       }
+    } else {
+      log.debug({ messageType: message.type, message }, "sdk message")
     }
   }
 
   if (!fullContent) {
     fullContent = "I can help with that. Could you provide more details?"
   }
+
+  log.info({ responseLength: fullContent.length }, "openai non-streaming response complete")
 
   return c.json({
     id: `chatcmpl-${requestId}`,
@@ -74,6 +85,7 @@ async function handleNonStreaming(
 
 async function handleStreaming(
   c: Context,
+  log: Logger,
   prompt: string,
   model: "opus" | "sonnet" | "haiku",
   modelId: string,
@@ -96,7 +108,7 @@ async function handleStreaming(
 
         let isFirst = true
         let lastText = ""
-        const skipBlockIndices = new Set<number>()
+        let skipBlockIndices = new Set<number>()
 
         try {
           for await (const message of response) {
@@ -104,6 +116,17 @@ async function handleStreaming(
               const event = message.event
               const eventType = event.type
               const eventIndex = (event as any).index as number | undefined
+
+              // Skip noisy per-token deltas at debug level
+              if (eventType !== "content_block_delta") {
+                log.debug({ eventType, eventIndex }, "stream event")
+              }
+
+              // New turn: reset per-turn block tracking
+              if (eventType === "message_start") {
+                skipBlockIndices = new Set<number>()
+                continue
+              }
 
               // Filter out tool_use content blocks
               if (eventType === "content_block_start") {
@@ -144,6 +167,8 @@ async function handleStreaming(
                   isFirst = false
                 }
               }
+            } else {
+              log.debug({ messageType: message.type }, "sdk message")
             }
           }
         } finally {
@@ -161,8 +186,10 @@ async function handleStreaming(
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(doneChunk)}\n\n`))
         controller.enqueue(encoder.encode(`data: [DONE]\n\n`))
 
+        log.info("openai streaming response complete")
         controller.close()
       } catch (error) {
+        log.error({ err: error }, "openai streaming error")
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
